@@ -1,3 +1,1 @@
-# ILOVEU
-Iloveu worm --- 
-LISTEN HERE, YOU MUST EXECUTE THIS ON A VM OR YOUR PC WILL EXPLODE!!!11 ( Do not use this script for obviously malicious activity )
+Python is required to set this up - follow a tutorial if you dont know how to install python.
